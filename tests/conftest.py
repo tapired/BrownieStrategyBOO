@@ -40,7 +40,7 @@ def keeper(accounts):
 
 @pytest.fixture
 def token():
-    token_address = "0x6b175474e89094c44da98b954eedeac495271d0f"  # this should be the address of the ERC-20 used by the strategy/vault (DAI)
+    token_address = "0x841FAD6EAe12c286d1Fd18d1d525DFfA75C7EFFE"  # this should be the address of the ERC-20 used by the strategy/vault (DAI)
     yield Contract(token_address)
 
 
@@ -49,21 +49,22 @@ def amount(accounts, token, user):
     amount = 10_000 * 10 ** token.decimals()
     # In order to get some funds for the token you are about to use,
     # it impersonate an exchange address to use it's funds.
-    reserve = accounts.at("0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643", force=True)
+    reserve = accounts.at("0xEc7178F4C41f346b2721907F5cF7628E388A7a58", force=True)
     token.transfer(user, amount, {"from": reserve})
     yield amount
 
 
 @pytest.fixture
 def weth():
-    token_address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+    token_address = "0x74b23882a30290451A17c44f4F05243b6b58C76d"
     yield Contract(token_address)
 
 
 @pytest.fixture
-def weth_amout(user, weth):
+def weth_amout(user, weth, accounts):
     weth_amout = 10 ** weth.decimals()
-    user.transfer(weth, weth_amout)
+    reserve_weth = accounts.at("0xBDC8fd437C489Ca3c6DA3B5a336D11532a532303", force=True)
+    weth.transfer(user, weth_amout, {"from":reserve_weth})
     yield weth_amout
 
 

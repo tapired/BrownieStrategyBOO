@@ -6,7 +6,7 @@ import pytest
 
 
 def test_vault_shutdown_can_withdraw(
-    chain, token, vault, strategy, user, amount, RELATIVE_APPROX
+    chain, token, vault, strategy, user, amount, RELATIVE_APPROX, keeper
 ):
     ## Deposit in Vault
     token.approve(vault.address, amount, {"from": user})
@@ -14,7 +14,7 @@ def test_vault_shutdown_can_withdraw(
     assert token.balanceOf(vault.address) == amount
 
     if token.balanceOf(user) > 0:
-        token.transfer(ZERO_ADDRESS, token.balanceOf(user), {"from": user})
+        token.transfer(keeper, token.balanceOf(user), {"from": user})
 
     # Harvest 1: Send funds through the strategy
     strategy.harvest()
