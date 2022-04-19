@@ -5,12 +5,12 @@ pragma experimental ABIEncoderV2;
 import {BaseStrategy} from "@yearnvaults/contracts/BaseStrategy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
-import "./interfaces/IAcalab.sol";
+import "./interfaces/IAcelab.sol";
 import "./interfaces/IMirrorWorld.sol";
 import "./interfaces/ISpookyRouter.sol";
 
 contract Strategy is BaseStrategy {
-    address public constant acalab =
+    address public constant acelab =
     address(0x2352b745561e7e6FCD03c093cE7220e3e126ace0);
     address public constant mirrorworld =
     address(0xa48d959AE2E88f1dAA7D5F611E01908106dE7598); // aka xboo
@@ -28,7 +28,7 @@ contract Strategy is BaseStrategy {
         rewardToken = getRewardToken();
 
         want.approve(mirrorworld, type(uint256).max);
-        IERC20(mirrorworld).approve(acalab, type(uint256).max);
+        IERC20(mirrorworld).approve(acelab, type(uint256).max);
         rewardToken.approve(spookyrouter, type(uint256).max);
     }
 
@@ -47,36 +47,36 @@ contract Strategy is BaseStrategy {
         return IMirrorWorld(mirrorworld).BOOBalance(address(this));
     }
 
-    function balanceOfWantInAcalab() public view returns (uint256 booAmount) {
-        uint256 xbooAmount = balanceOfXBOOInAcaLab();
+    function balanceOfWantInAcelab() public view returns (uint256 booAmount) {
+        uint256 xbooAmount = _balanceOfXBOOInAceLab();
         return IMirrorWorld(mirrorworld).xBOOForBOO(xbooAmount);
     }
 
-    function balanceOfXBOOInAcaLab() internal view returns (uint256) {
-        IAcalab.UserInfo memory user = IAcalab(acalab).userInfo(
+    function _balanceOfXBOOInAceLab() internal view returns (uint256) {
+        IAcelab.UserInfo memory user = IAcelab(acelab).userInfo(
             chefId,
             address(this)
         );
         return user.amount;
     }
 
-    function balanceOfXBOO() internal view returns (uint256) {
+    function _balanceOfXBOO() internal view returns (uint256) {
         return IERC20(mirrorworld).balanceOf(address(this));
     }
 
     function getRewardToken() public view returns (IERC20 _rewardToken) {
-        IAcalab.PoolInfo memory pool = IAcalab(acalab).poolInfo(chefId);
+        IAcelab.PoolInfo memory pool = IAcelab(acelab).poolInfo(chefId);
         return pool.RewardToken;
     }
 
-    function setChefId(uint256 _chefId) external onlyAuthorized {
+    function setChefId(uint256 _chefId) external onlyVaultManagers {
         chefId = _chefId;
         rewardToken = getRewardToken();
         rewardToken.approve(spookyrouter, type(uint256).max);
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
-        return balanceOfWantInAcalab().add(balanceOfWant());
+        return balanceOfWantInAcelab().add(balanceOfWant());
     }
 
     function prepareReturn(uint256 _debtOutstanding) internal override returns (uint256 _profit, uint256 _loss, uint256 _debtPayment){
@@ -112,8 +112,8 @@ contract Strategy is BaseStrategy {
     }
 
     function _claimRewardsAndBOO() internal {
-        IAcalab(acalab).withdraw(chefId, balanceOfXBOOInAcaLab());
-        IMirrorWorld(mirrorworld).leave(balanceOfXBOO());
+        IAcelab(acelab).withdraw(chefId, _balanceOfXBOOInAceLab());
+        IMirrorWorld(mirrorworld).leave(_balanceOfXBOO());
     }
 
     function _swapRewardToWant() internal {
@@ -135,9 +135,9 @@ contract Strategy is BaseStrategy {
 
     function adjustPosition(uint256 _debtOutstanding) internal override {
         uint256 wantBal = want.balanceOf(address(this));
-        if (wantBal > 0 || balanceOfXBOO() > 0) {
+        if (wantBal > 0 || _balanceOfXBOO() > 0) {
             IMirrorWorld(mirrorworld).enter(wantBal);
-            IAcalab(acalab).deposit(chefId, balanceOfXBOO());
+            IAcelab(acelab).deposit(chefId, _balanceOfXBOO());
         }
     }
 
@@ -165,22 +165,22 @@ contract Strategy is BaseStrategy {
         uint256 _actualWithdrawn = IMirrorWorld(mirrorworld).BOOForxBOO(
             _amountRequired
         );
-        IAcalab(acalab).withdraw(chefId, _actualWithdrawn);
+        IAcelab(acelab).withdraw(chefId, _actualWithdrawn);
         IMirrorWorld(mirrorworld).leave(_actualWithdrawn);
     }
 
     function liquidateAllPositions() internal override returns (uint256) {
         require(emergencyExit);
-        IAcalab(acalab).withdraw(chefId, balanceOfXBOOInAcaLab());
-        IMirrorWorld(mirrorworld).leave(balanceOfXBOO());
+        IAcelab(acelab).withdraw(chefId, _balanceOfXBOOInAceLab());
+        IMirrorWorld(mirrorworld).leave(_balanceOfXBOO());
         return want.balanceOf(address(this));
     }
 
     function prepareMigration(address _newStrategy) internal override {
-        if (balanceOfXBOOInAcaLab() > 0) {
-            IAcalab(acalab).withdraw(chefId, balanceOfXBOOInAcaLab());
+        if (_balanceOfXBOOInAceLab() > 0) {
+            IAcelab(acelab).withdraw(chefId, _balanceOfXBOOInAceLab());
         }
-        IERC20(mirrorworld).safeTransfer(_newStrategy, balanceOfXBOO());
+        IERC20(mirrorworld).safeTransfer(_newStrategy, _balanceOfXBOO());
 
         if (rewardToken.balanceOf(address(this)) > 0) {
             rewardToken.safeTransfer(

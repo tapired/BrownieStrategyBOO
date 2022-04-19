@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
-interface IAcalab is IERC20{
+interface IAcelab is IERC20{
   struct UserInfo {
         uint256 amount;     // How many tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
