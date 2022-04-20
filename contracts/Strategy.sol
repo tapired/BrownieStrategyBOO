@@ -20,26 +20,26 @@ contract Strategy is BaseStrategy {
     address(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
 
     uint256 public chefId;
+    address[] public swapPath;
     IERC20 public rewardToken;
 
     constructor(address _vault) public BaseStrategy(_vault) {
-        chefId = 12;
-        // spell
-        rewardToken = getRewardToken();
-
         want.approve(mirrorworld, type(uint256).max);
         IERC20(mirrorworld).approve(acelab, type(uint256).max);
-        rewardToken.approve(spookyrouter, type(uint256).max);
     }
 
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
 
     function name() external view override returns (string memory) {
-        return "StrategySpookyBOO";
+        return "Spooky BOO optimizer";
     }
 
     function balanceOfWant() public view returns (uint256) {
         return want.balanceOf(address(this));
+    }
+
+    function balanceOfReward() public view returns (uint256) {
+        return rewardToken.balanceOf(address(this));
     }
 
     function balanceOfWantInMirrorWorld() public view returns (uint256) {
@@ -69,9 +69,28 @@ contract Strategy is BaseStrategy {
         return pool.RewardToken;
     }
 
-    function setChefId(uint256 _chefId) external onlyVaultManagers {
+    /// in seconds
+    function rewardTimeRemaining() public view returns (uint256) {
+        uint256 end = IAcelab(acelab).poolInfo(chefId).endTime;
+        return end > now ? end - now : 0;
+    }
+
+    function setReward(uint256 _chefId, address[] memory _swapPath) external onlyVaultManagers {
+        if (address(rewardToken) != address(0x0)) {
+            // make sure old rewards are sold before switching
+            require(balanceOfReward() == 0, "unsold rewards!");
+            // revoke old
+            rewardToken.approve(spookyrouter, 0);
+        }
+
+        swapPath = _swapPath;
         chefId = _chefId;
         rewardToken = getRewardToken();
+
+        require(address(rewardToken) == _swapPath[0], "illegal path!");
+        require(address(want) == _swapPath[_swapPath.length - 1], "illegal path!");
+        require(rewardTimeRemaining() > 0, "rewards ended!");
+
         rewardToken.approve(spookyrouter, type(uint256).max);
     }
 
@@ -92,10 +111,10 @@ contract Strategy is BaseStrategy {
             (_amountFreed, _loss) = liquidatePosition(_debtOutstanding);
             _debtPayment = Math.min(_amountFreed, _debtOutstanding);
         }
-        uint256 _wantBefore = want.balanceOf(address(this));
+        uint256 _wantBefore = balanceOfWant();
         // 0
         _swapRewardToWant();
-        uint256 _wantAfter = want.balanceOf(address(this));
+        uint256 _wantAfter = balanceOfWant();
         // 100
 
         _profit = _wantAfter.sub(_wantBefore);
@@ -111,22 +130,26 @@ contract Strategy is BaseStrategy {
         }
     }
 
+    function claimRewardsAndBOO() external onlyVaultManagers {
+        _claimRewardsAndBOO();
+    }
+
     function _claimRewardsAndBOO() internal {
         IAcelab(acelab).withdraw(chefId, _balanceOfXBOOInAceLab());
         IMirrorWorld(mirrorworld).leave(_balanceOfXBOO());
     }
 
+    function swapRewardToWant() external onlyVaultManagers {
+        _swapRewardToWant();
+    }
+
     function _swapRewardToWant() internal {
-        uint256 bonusToken = rewardToken.balanceOf(address(this));
-        if (bonusToken > 0) {
-            address[] memory path = new address[](3);
-            path[0] = address(rewardToken);
-            path[1] = wftm;
-            path[2] = address(want);
+        uint256 rewards = balanceOfReward();
+        if (rewards > 0) {
             ISpookyRouter(spookyrouter).swapExactTokensForTokens(
-                bonusToken,
+                rewards,
                 0,
-                path,
+                swapPath,
                 address(this),
                 block.timestamp + 120
             );
@@ -182,10 +205,11 @@ contract Strategy is BaseStrategy {
         }
         IERC20(mirrorworld).safeTransfer(_newStrategy, _balanceOfXBOO());
 
-        if (rewardToken.balanceOf(address(this)) > 0) {
+        uint256 rewards = balanceOfReward();
+        if (rewards > 0) {
             rewardToken.safeTransfer(
                 _newStrategy,
-                rewardToken.balanceOf(address(this))
+                rewards
             );
         }
     }
