@@ -5,6 +5,7 @@ __pycache__
 build/
 reports/
 .env
+.idea/
 
 # Node/npm
 node_modules/

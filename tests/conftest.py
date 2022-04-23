@@ -64,7 +64,7 @@ def weth():
 def weth_amout(user, weth, accounts):
     weth_amout = 10 ** weth.decimals()
     reserve_weth = accounts.at("0xBDC8fd437C489Ca3c6DA3B5a336D11532a532303", force=True)
-    weth.transfer(user, weth_amout, {"from":reserve_weth})
+    weth.transfer(user, weth_amout, {"from": reserve_weth})
     yield weth_amout
 
 
@@ -79,10 +79,17 @@ def vault(pm, gov, rewards, guardian, management, token):
 
 
 @pytest.fixture
-def strategy(strategist, keeper, vault, Strategy, gov):
+def strategy(strategist, keeper, vault, Strategy, gov, chain, token):
     strategy = strategist.deploy(Strategy, vault)
     strategy.setKeeper(keeper)
     vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov})
+
+    # SOLID -> WFTM -> BOO
+    strategy.setReward(30, ["0x888EF71766ca594DED1F0FA3AE64eD2941740A20",
+                            "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
+                            token],
+                       {'from': gov})
+    chain.sleep(1)
     yield strategy
 
 
