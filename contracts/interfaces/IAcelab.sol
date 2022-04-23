@@ -32,4 +32,7 @@ interface IAcelab is IERC20 {
     function userInfo(uint256 _pid, address _userAddress) external view returns (UserInfo memory _userInfo);
 
     function poolInfo(uint _index) external view returns (PoolInfo memory _poolInfo);
+
+    function pendingReward(uint256 _pid, address _user) external view returns (uint256);
+
 }

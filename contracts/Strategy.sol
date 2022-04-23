@@ -42,6 +42,10 @@ contract Strategy is BaseStrategy {
         return rewardToken.balanceOf(address(this));
     }
 
+    function balanceOfPendingReward() public view returns (uint256){
+        return IAcelab(acelab).pendingReward(chefId, address(this));
+    }
+
     function balanceOfWantInMirrorWorld() public view returns (uint256) {
         // how much boo we sent to xboo contract
         return IMirrorWorld(mirrorworld).BOOBalance(address(this));
@@ -98,53 +102,57 @@ contract Strategy is BaseStrategy {
         return balanceOfWantInAcelab().add(balanceOfWant());
     }
 
-    function prepareReturn(uint256 _debtOutstanding) internal override returns (uint256 _profit, uint256 _loss, uint256 _debtPayment){
-        uint256 debt = vault.strategies(address(this)).totalDebt;
-        uint256 _lossFromPrevious;
-
-        if (debt > estimatedTotalAssets()) {
-            _lossFromPrevious = debt.sub(estimatedTotalAssets());
-        }
-        _claimRewardsAndBOO();
-        if (_debtOutstanding > 0) {
-            uint256 _amountFreed = 0;
-            (_amountFreed, _loss) = liquidatePosition(_debtOutstanding);
-            _debtPayment = Math.min(_amountFreed, _debtOutstanding);
-        }
-        uint256 _wantBefore = balanceOfWant();
-        // 0
+    function test() public {
+        _claimRewards();
         _swapRewardToWant();
-        uint256 _wantAfter = balanceOfWant();
-        // 100
+    }
 
-        _profit = _wantAfter.sub(_wantBefore);
+    function prepareReturn(uint256 _debtOutstanding) internal override returns (uint256 _profit, uint256 _loss, uint256 _debtPayment){
+        _claimRewards();
+        _swapRewardToWant();
 
-        //net off profit and loss
+        uint256 debt = vault.strategies(address(this)).totalDebt;
+        uint256 eta = estimatedTotalAssets();
+        _profit = eta > debt ? eta - debt : 0;
 
-        if (_profit >= _loss.add(_lossFromPrevious)) {
-            _profit = _profit.sub((_loss.add(_lossFromPrevious)));
+        uint256 toLiquidate = _debtOutstanding.add(_profit);
+        if (toLiquidate > 0) {
+            uint256 _amountFreed;
+            (_amountFreed, _loss) = liquidatePosition(toLiquidate);
+            _debtPayment = Math.min(_debtOutstanding, _amountFreed);
+        }
+
+        // net out PnL
+        if (_profit > _loss) {
+            _profit = _profit.sub(_loss);
             _loss = 0;
         } else {
+            _loss = _loss.sub(_profit);
             _profit = 0;
-            _loss = (_loss.add(_lossFromPrevious)).sub(_profit);
         }
     }
 
-    function claimRewardsAndBOO() external onlyVaultManagers {
-        _claimRewardsAndBOO();
+    function claimRewards() external onlyVaultManagers {
+        _claimRewards();
     }
 
-    function _claimRewardsAndBOO() internal {
-        IAcelab(acelab).withdraw(chefId, _balanceOfXBOOInAceLab());
-        IMirrorWorld(mirrorworld).leave(_balanceOfXBOO());
+    // claim reward from acelab
+    function _claimRewards() internal {
+        if (balanceOfPendingReward() > 0) {
+            IAcelab(acelab).withdraw(chefId, 0);
+        }
     }
 
     function swapRewardToWant() external onlyVaultManagers {
         _swapRewardToWant();
     }
 
+    event Debug(string msg, uint value);
+
     function _swapRewardToWant() internal {
         uint256 rewards = balanceOfReward();
+        emit Debug("rewards", rewards);
+
         if (rewards > 0) {
             ISpookyRouter(spookyrouter).swapExactTokensForTokens(
                 rewards,
@@ -184,12 +192,10 @@ contract Strategy is BaseStrategy {
         }
     }
 
-    function _withdrawSome(uint256 _amountRequired) internal {
-        uint256 _actualWithdrawn = IMirrorWorld(mirrorworld).BOOForxBOO(
-            _amountRequired
-        );
-        IAcelab(acelab).withdraw(chefId, _actualWithdrawn);
-        IMirrorWorld(mirrorworld).leave(_actualWithdrawn);
+    function _withdrawSome(uint256 _amountWant) internal {
+        uint256 _amountXBoo = IMirrorWorld(mirrorworld).BOOForxBOO(_amountWant);
+        IAcelab(acelab).withdraw(chefId, _amountXBoo);
+        IMirrorWorld(mirrorworld).leave(_amountXBoo);
     }
 
     function liquidateAllPositions() internal override returns (uint256) {
