@@ -49,7 +49,7 @@ def amount(accounts, token, user):
     amount = 10_000 * 10 ** token.decimals()
     # In order to get some funds for the token you are about to use,
     # it impersonate an exchange address to use it's funds.
-    reserve = accounts.at("0xEc7178F4C41f346b2721907F5cF7628E388A7a58", force=True)
+    reserve = accounts.at("0xf778F4D7a14A8CB73d5261f9C61970ef4E7D7842", force=True)
     token.transfer(user, amount, {"from": reserve})
     yield amount
 
@@ -80,15 +80,13 @@ def vault(pm, gov, rewards, guardian, management, token):
 
 @pytest.fixture
 def strategy(strategist, keeper, vault, Strategy, gov, chain, token):
-    strategy = strategist.deploy(Strategy, vault)
-    strategy.setKeeper(keeper)
-    vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov})
-
-    # SOLID -> WFTM -> BOO
-    strategy.setReward(30, ["0x888EF71766ca594DED1F0FA3AE64eD2941740A20",
+    strategy = strategist.deploy(Strategy, vault, ["0x888EF71766ca594DED1F0FA3AE64eD2941740A20",
                             "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
                             token],
-                       {'from': gov})
+                            30
+                                )
+    strategy.setKeeper(keeper)
+    vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov})
     chain.sleep(1)
     yield strategy
 

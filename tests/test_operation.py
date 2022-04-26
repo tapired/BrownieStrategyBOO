@@ -56,6 +56,7 @@ def test_profitable_harvest(
     chain.sleep(1)
     strategy.harvest()
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
+    before_pps = vault.pricePerShare()
 
     # TODO: Add some code before harvest #2 to simulate earning yield
 
@@ -66,8 +67,7 @@ def test_profitable_harvest(
     chain.mine(1)
     profit = token.balanceOf(vault.address)  # Profits go to vault
     # TODO: Uncomment the lines below
-    # assert token.balanceOf(strategy) + profit > amount
-    # assert vault.pricePerShare() > before_pps
+    assert vault.pricePerShare() > before_pps
 
 
 def test_change_debt(

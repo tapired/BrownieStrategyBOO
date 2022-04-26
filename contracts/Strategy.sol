@@ -11,21 +11,43 @@ import "./interfaces/ISpookyRouter.sol";
 
 contract Strategy is BaseStrategy {
     address public constant acelab =
-    address(0x2352b745561e7e6FCD03c093cE7220e3e126ace0);
+        address(0x2352b745561e7e6FCD03c093cE7220e3e126ace0);
     address public constant mirrorworld =
-    address(0xa48d959AE2E88f1dAA7D5F611E01908106dE7598); // aka xboo
+        address(0xa48d959AE2E88f1dAA7D5F611E01908106dE7598); // aka xboo
     address public constant spookyrouter =
-    address(0xF491e7B69E4244ad4002BC14e878a34207E38c29);
+        address(0xF491e7B69E4244ad4002BC14e878a34207E38c29);
     address public constant wftm =
-    address(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
+        address(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
 
     uint256 public chefId;
     address[] public swapPath;
     IERC20 public rewardToken;
 
-    constructor(address _vault) public BaseStrategy(_vault) {
+    constructor(
+        address _vault,
+        address[] memory _swapPath,
+        uint256 _chefId
+    ) public BaseStrategy(_vault) {
+        _initializeStrat(_swapPath, _chefId);
+    }
+
+    function _initializeStrat(address[] memory _swapPath, uint256 _chefId)
+        internal
+    {
+        chefId = _chefId;
+        rewardToken = getRewardToken();
+        require(address(rewardToken) != address(0x0), "ZERO_ADDRESS");
+        require(address(rewardToken) == _swapPath[0], "illegal path!");
+        require(
+            address(want) == _swapPath[_swapPath.length - 1],
+            "illegal path!"
+        );
+        require(rewardTimeRemaining() > 0, "rewards ended!");
+        swapPath = _swapPath;
+
         want.approve(mirrorworld, type(uint256).max);
         IERC20(mirrorworld).approve(acelab, type(uint256).max);
+        rewardToken.approve(spookyrouter, type(uint256).max);
     }
 
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
@@ -42,7 +64,7 @@ contract Strategy is BaseStrategy {
         return rewardToken.balanceOf(address(this));
     }
 
-    function balanceOfPendingReward() public view returns (uint256){
+    function balanceOfPendingReward() public view returns (uint256) {
         return IAcelab(acelab).pendingReward(chefId, address(this));
     }
 
@@ -51,8 +73,8 @@ contract Strategy is BaseStrategy {
         return IMirrorWorld(mirrorworld).BOOBalance(address(this));
     }
 
-    function balanceOfWantInAcelab() public view returns (uint256 booAmount) {
-        uint256 xbooAmount = _balanceOfXBOOInAceLab();
+    function balanceOfWantInXBOO() public view returns (uint256 booAmount) {
+        uint256 xbooAmount = _totalXBOO();
         return IMirrorWorld(mirrorworld).xBOOForBOO(xbooAmount);
     }
 
@@ -68,6 +90,10 @@ contract Strategy is BaseStrategy {
         return IERC20(mirrorworld).balanceOf(address(this));
     }
 
+    function _totalXBOO() internal view returns (uint256) {
+        return _balanceOfXBOOInAceLab().add(_balanceOfXBOO());
+    }
+
     function getRewardToken() public view returns (IERC20 _rewardToken) {
         IAcelab.PoolInfo memory pool = IAcelab(acelab).poolInfo(chefId);
         return pool.RewardToken;
@@ -79,36 +105,53 @@ contract Strategy is BaseStrategy {
         return end > now ? end - now : 0;
     }
 
-    function setReward(uint256 _chefId, address[] memory _swapPath) external onlyVaultManagers {
-        if (address(rewardToken) != address(0x0)) {
-            // make sure old rewards are sold before switching
-            require(balanceOfReward() == 0, "unsold rewards!");
-            // revoke old
-            rewardToken.approve(spookyrouter, 0);
+    function setReward(uint256 _newChefId, address[] memory _swapPath)
+        external
+        onlyVaultManagers
+    {
+        IAcelab(acelab).withdraw(chefId, _balanceOfXBOOInAceLab());
+        // make sure old rewards are sold before switching
+        // there could be a situation where there is 0 reward but xboo staked in acelab so lets seperate the logic
+        if (balanceOfPendingReward() > 0) {
+            _claimRewards();
         }
+        if (balanceOfReward() > 0) {
+            _swapRewardToWant();
+        }
+        require(balanceOfReward() == 0, "unsold rewards!");
 
+        // revoke old
+        rewardToken.approve(spookyrouter, 0);
         swapPath = _swapPath;
-        chefId = _chefId;
+        chefId = _newChefId;
         rewardToken = getRewardToken();
-
+        require(address(rewardToken) != address(0x0), "ZERO_ADDRESS");
         require(address(rewardToken) == _swapPath[0], "illegal path!");
-        require(address(want) == _swapPath[_swapPath.length - 1], "illegal path!");
+        require(
+            address(want) == _swapPath[_swapPath.length - 1],
+            "illegal path!"
+        );
         require(rewardTimeRemaining() > 0, "rewards ended!");
 
         rewardToken.approve(spookyrouter, type(uint256).max);
+        adjustPosition(10); // not sure of this random integer
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
-        return balanceOfWantInAcelab().add(balanceOfWant());
+        return balanceOfWantInXBOO().add(balanceOfWant());
     }
 
-    function test() public {
+    function prepareReturn(uint256 _debtOutstanding)
+        internal
+        override
+        returns (
+            uint256 _profit,
+            uint256 _loss,
+            uint256 _debtPayment
+        )
+    {
         _claimRewards();
-        _swapRewardToWant();
-    }
-
-    function prepareReturn(uint256 _debtOutstanding) internal override returns (uint256 _profit, uint256 _loss, uint256 _debtPayment){
-        _claimRewards();
+        _claimFees();
         _swapRewardToWant();
 
         uint256 debt = vault.strategies(address(this)).totalDebt;
@@ -147,11 +190,8 @@ contract Strategy is BaseStrategy {
         _swapRewardToWant();
     }
 
-    event Debug(string msg, uint value);
-
     function _swapRewardToWant() internal {
         uint256 rewards = balanceOfReward();
-        emit Debug("rewards", rewards);
 
         if (rewards > 0) {
             ISpookyRouter(spookyrouter).swapExactTokensForTokens(
@@ -164,15 +204,32 @@ contract Strategy is BaseStrategy {
         }
     }
 
+    function claimFees() external onlyVaultManagers {
+        _claimFees();
+    }
+
+    function _claimFees() internal {
+        if (_balanceOfXBOOInAceLab() > 0) {
+            IAcelab(acelab).withdraw(chefId, _balanceOfXBOOInAceLab());
+            IMirrorWorld(mirrorworld).leave(_balanceOfXBOO());
+        }
+    }
+
     function adjustPosition(uint256 _debtOutstanding) internal override {
         uint256 wantBal = want.balanceOf(address(this));
-        if (wantBal > 0 || _balanceOfXBOO() > 0) {
+        if (wantBal > 0) {
             IMirrorWorld(mirrorworld).enter(wantBal);
+        }
+        if (_balanceOfXBOO() > 0) {
             IAcelab(acelab).deposit(chefId, _balanceOfXBOO());
         }
     }
 
-    function liquidatePosition(uint256 _amountNeeded) internal override returns (uint256 _liquidatedAmount, uint256 _loss){
+    function liquidatePosition(uint256 _amountNeeded)
+        internal
+        override
+        returns (uint256 _liquidatedAmount, uint256 _loss)
+    {
         uint256 wantBalance = balanceOfWant();
         if (wantBalance > _amountNeeded) {
             // if there is enough free want, let's use it
@@ -213,20 +270,28 @@ contract Strategy is BaseStrategy {
 
         uint256 rewards = balanceOfReward();
         if (rewards > 0) {
-            rewardToken.safeTransfer(
-                _newStrategy,
-                rewards
-            );
+            rewardToken.safeTransfer(_newStrategy, rewards);
         }
     }
 
-    function protectedTokens() internal view override returns (address[] memory){
+    function protectedTokens()
+        internal
+        view
+        override
+        returns (address[] memory)
+    {
         address[] memory protected = new address[](2);
         protected[0] = address(rewardToken);
         protected[1] = mirrorworld;
     }
 
-    function ethToWant(uint256 _amtInWei) public view virtual override returns (uint256){
+    function ethToWant(uint256 _amtInWei)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         return _amtInWei;
     }
 }

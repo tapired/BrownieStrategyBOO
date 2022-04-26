@@ -1,0 +1,238 @@
+Strategy.setReward(uint256,address[]) (contracts/Strategy.sol#108-138) uses a dangerous strict equality:
+        - require(bool,string)(balanceOfReward() == 0,unsold rewards!) (contracts/Strategy.sol#121)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+
+Reentrancy in Strategy.setReward(uint256,address[]) (contracts/Strategy.sol#108-138):
+        External calls:
+        - IAcelab(acelab).withdraw(chefId,_balanceOfXBOOInAceLab()) (contracts/Strategy.sol#112)
+        - _claimRewards() (contracts/Strategy.sol#116)
+                - IAcelab(acelab).withdraw(chefId,0) (contracts/Strategy.sol#185)
+        - _swapRewardToWant() (contracts/Strategy.sol#119)
+                - ISpookyRouter(spookyrouter).swapExactTokensForTokens(rewards,0,swapPath,address(this),block.timestamp + 120) (contracts/Strategy.sol#197-203)
+        - rewardToken.approve(spookyrouter,0) (contracts/Strategy.sol#124)
+        State variables written after the call(s):
+        - chefId = _newChefId (contracts/Strategy.sol#126)
+        - rewardToken = getRewardToken() (contracts/Strategy.sol#127)
+        - swapPath = _swapPath (contracts/Strategy.sol#125)
+Reentrancy in BaseStrategy.setRewards(address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#414-420):
+        External calls:
+        - vault.approve(rewards,0) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#416)
+        State variables written after the call(s):
+        - rewards = _rewards (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#417)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1
+
+BaseStrategy.sweep(address).i (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#893) is a local variable never initialized
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-local-variables
+
+Strategy._initializeStrat(address[],uint256) (contracts/Strategy.sol#34-51) ignores return value by want.approve(mirrorworld,type()(uint256).max) (contracts/Strategy.sol#48)
+Strategy._initializeStrat(address[],uint256) (contracts/Strategy.sol#34-51) ignores return value by IERC20(mirrorworld).approve(acelab,type()(uint256).max) (contracts/Strategy.sol#49)
+Strategy._initializeStrat(address[],uint256) (contracts/Strategy.sol#34-51) ignores return value by rewardToken.approve(spookyrouter,type()(uint256).max) (contracts/Strategy.sol#50)
+Strategy.setReward(uint256,address[]) (contracts/Strategy.sol#108-138) ignores return value by rewardToken.approve(spookyrouter,0) (contracts/Strategy.sol#124)
+Strategy.setReward(uint256,address[]) (contracts/Strategy.sol#108-138) ignores return value by rewardToken.approve(spookyrouter,type()(uint256).max) (contracts/Strategy.sol#136)
+Strategy._swapRewardToWant() (contracts/Strategy.sol#193-205) ignores return value by ISpookyRouter(spookyrouter).swapExactTokensForTokens(rewards,0,swapPath,address(this),block.timestamp + 120) (contracts/Strategy.sol#197-203)
+BaseStrategy._initialize(address,address,address,address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#342-364) ignores return value by vault.approve(rewards,uint256(- 1)) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#363)
+BaseStrategy.setRewards(address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#414-420) ignores return value by vault.approve(rewards,0) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#416)
+BaseStrategy.setRewards(address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#414-420) ignores return value by vault.approve(rewards,uint256(- 1)) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#418)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+
+Strategy._swapRewardToWant().rewards (contracts/Strategy.sol#194) shadows:
+        - BaseStrategy.rewards (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#240) (state variable)
+Strategy.prepareMigration(address).rewards (contracts/Strategy.sol#271) shadows:
+        - BaseStrategy.rewards (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#240) (state variable)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#local-variable-shadowing
+
+Strategy.setReward(uint256,address[]) (contracts/Strategy.sol#108-138) should emit an event for:
+        - chefId = _newChefId (contracts/Strategy.sol#126)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-arithmetic
+
+BaseStrategy.setHealthCheck(address)._healthCheck (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#366) lacks a zero-check on :
+                - healthCheck = _healthCheck (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#367)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+
+Reentrancy in BaseStrategy._initialize(address,address,address,address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#342-364):
+        External calls:
+        - want.safeApprove(_vault,uint256(- 1)) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#352)
+        State variables written after the call(s):
+        - debtThreshold = 0 (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#361)
+        - keeper = _keeper (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#355)
+        - maxReportDelay = 86400 (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#359)
+        - minReportDelay = 0 (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#358)
+        - profitFactor = 100 (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#360)
+        - rewards = _rewards (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#354)
+        - strategist = _strategist (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#353)
+Reentrancy in BaseStrategy.harvest() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#752-788):
+        External calls:
+        - debtOutstanding = vault.report(profit,loss,debtPayment) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#775)
+        State variables written after the call(s):
+        - doHealthCheck = true (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#784)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+
+Reentrancy in BaseStrategyInitializable.clone(address,address,address,address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#919-940):
+        External calls:
+        - BaseStrategyInitializable(newStrategy).initialize(_vault,_strategist,_rewards,_keeper) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#937)
+        Event emitted after the call(s):
+        - Cloned(newStrategy) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#939)
+Reentrancy in BaseStrategy.harvest() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#752-788):
+        External calls:
+        - debtOutstanding = vault.report(profit,loss,debtPayment) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#775)
+        Event emitted after the call(s):
+        - Harvested(profit,loss,debtPayment,debtOutstanding) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#787)
+Reentrancy in BaseStrategy.setEmergencyExit() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#844-849):
+        External calls:
+        - vault.revokeStrategy() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#846)
+        Event emitted after the call(s):
+        - EmergencyExitEnabled() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#848)
+Reentrancy in BaseStrategy.setRewards(address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#414-420):
+        External calls:
+        - vault.approve(rewards,0) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#416)
+        - vault.approve(rewards,uint256(- 1)) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#418)
+        Event emitted after the call(s):
+        - UpdatedRewards(_rewards) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#419)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+
+Strategy._initializeStrat(address[],uint256) (contracts/Strategy.sol#34-51) uses timestamp for comparisons
+        Dangerous comparisons:
+        - require(bool,string)(rewardTimeRemaining() > 0,rewards ended!) (contracts/Strategy.sol#45)
+Strategy.rewardTimeRemaining() (contracts/Strategy.sol#103-106) uses timestamp for comparisons
+        Dangerous comparisons:
+        - end > now (contracts/Strategy.sol#105)
+Strategy.setReward(uint256,address[]) (contracts/Strategy.sol#108-138) uses timestamp for comparisons
+        Dangerous comparisons:
+        - require(bool,string)(rewardTimeRemaining() > 0,rewards ended!) (contracts/Strategy.sol#134)
+BaseStrategy.harvestTrigger(uint256) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#700-733) uses timestamp for comparisons
+        Dangerous comparisons:
+        - block.timestamp.sub(params.lastReport) < minReportDelay (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#708)
+        - block.timestamp.sub(params.lastReport) >= maxReportDelay (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#711)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+
+Address.isContract(address) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#26-35) uses assembly
+        - INLINE ASM (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#33)
+Address._functionCallWithValue(address,bytes,uint256,string) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#119-140) uses assembly
+        - INLINE ASM (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#132-135)
+BaseStrategyInitializable.clone(address,address,address,address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#919-940) uses assembly
+        - INLINE ASM (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#928-935)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+
+Different versions of Solidity are used:
+        - Version used: ['0.6.12', '>=0.6.0<0.7.0', '^0.6.0', '^0.6.2']
+        - 0.6.12 (contracts/interfaces/IAcalab.sol#2-3)
+        - ABIEncoderV2 (contracts/interfaces/IAcalab.sol#3-4)
+        - 0.6.12 (contracts/interfaces/IAcelab.sol#3)
+        - ABIEncoderV2 (contracts/interfaces/IAcelab.sol#4)
+        - 0.6.12 (contracts/interfaces/IMirrorWorld.sol#3)
+        - ABIEncoderV2 (contracts/interfaces/IMirrorWorld.sol#4)
+        - 0.6.12 (contracts/interfaces/ISpookyRouter.sol#3)
+        - ABIEncoderV2 (contracts/interfaces/ISpookyRouter.sol#4)
+        - 0.6.12 (contracts/Strategy.sol#2)
+        - ABIEncoderV2 (contracts/Strategy.sol#3)
+        - ^0.6.2 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#3)
+        - ^0.6.0 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/token/ERC20/IERC20.sol#3)
+        - ^0.6.0 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/Math.sol#3)
+        - ^0.6.0 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/token/ERC20/SafeERC20.sol#3)
+        - ^0.6.0 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/SafeMath.sol#3)
+        - >=0.6.0<0.7.0 (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#2)
+        - ABIEncoderV2 (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#3)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+
+Address.functionCall(address,bytes) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#79-81) is never used and should be removed
+Address.functionCallWithValue(address,bytes,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#104-106) is never used and should be removed
+Address.functionCallWithValue(address,bytes,uint256,string) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#114-117) is never used and should be removed
+Address.sendValue(address,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#53-59) is never used and should be removed
+Math.average(uint256,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/Math.sol#27-30) is never used and should be removed
+Math.max(uint256,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/Math.sol#12-14) is never used and should be removed
+SafeERC20.safeDecreaseAllowance(IERC20,address,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/token/ERC20/SafeERC20.sol#53-56) is never used and should be removed
+SafeERC20.safeIncreaseAllowance(IERC20,address,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/token/ERC20/SafeERC20.sol#48-51) is never used and should be removed
+SafeERC20.safeTransferFrom(IERC20,address,address,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/token/ERC20/SafeERC20.sol#26-28) is never used and should be removed
+SafeMath.div(uint256,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/SafeMath.sol#103-105) is never used and should be removed
+SafeMath.div(uint256,uint256,string) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/SafeMath.sol#119-125) is never used and should be removed
+SafeMath.mod(uint256,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/SafeMath.sol#139-141) is never used and should be removed
+SafeMath.mod(uint256,uint256,string) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/SafeMath.sol#155-158) is never used and should be removed
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code
+
+Pragma version^0.6.2 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#3) allows old versions
+Pragma version^0.6.0 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/token/ERC20/IERC20.sol#3) allows old versions
+Pragma version^0.6.0 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/Math.sol#3) allows old versions
+Pragma version^0.6.0 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/token/ERC20/SafeERC20.sol#3) allows old versions
+Pragma version^0.6.0 (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/math/SafeMath.sol#3) allows old versions
+Pragma version>=0.6.0<0.7.0 (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#2) allows old versions
+solc-mmit.27d5176 is not recommended for deployment
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+
+Low level call in Address.sendValue(address,uint256) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#53-59):
+        - (success) = recipient.call{value: amount}() (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#57)
+Low level call in Address._functionCallWithValue(address,bytes,uint256,string) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#119-140):
+        - (success,returndata) = target.call{value: weiValue}(data) (../.brownie/packages/OpenZeppelin/openzeppelin-contracts@3.1.0/contracts/utils/Address.sol#123)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+
+Function IMirrorWorld.BOOBalance(address) (contracts/interfaces/IMirrorWorld.sol#9) is not in mixedCase
+Function IMirrorWorld.BOOForxBOO(uint256) (contracts/interfaces/IMirrorWorld.sol#11) is not in mixedCase
+Parameter Strategy.setReward(uint256,address[])._newChefId (contracts/Strategy.sol#108) is not in mixedCase
+Parameter Strategy.setReward(uint256,address[])._swapPath (contracts/Strategy.sol#108) is not in mixedCase
+Parameter Strategy.prepareReturn(uint256)._debtOutstanding (contracts/Strategy.sol#144) is not in mixedCase
+Parameter Strategy.liquidatePosition(uint256)._amountNeeded (contracts/Strategy.sol#228) is not in mixedCase
+Parameter Strategy.prepareMigration(address)._newStrategy (contracts/Strategy.sol#265) is not in mixedCase
+Parameter Strategy.ethToWant(uint256)._amtInWei (contracts/Strategy.sol#288) is not in mixedCase
+Constant Strategy.acelab (contracts/Strategy.sol#13-14) is not in UPPER_CASE_WITH_UNDERSCORES
+Constant Strategy.mirrorworld (contracts/Strategy.sol#15-16) is not in UPPER_CASE_WITH_UNDERSCORES
+Constant Strategy.spookyrouter (contracts/Strategy.sol#17-18) is not in UPPER_CASE_WITH_UNDERSCORES
+Constant Strategy.wftm (contracts/Strategy.sol#19-20) is not in UPPER_CASE_WITH_UNDERSCORES
+Parameter BaseStrategy.setHealthCheck(address)._healthCheck (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#366) is not in mixedCase
+Parameter BaseStrategy.setDoHealthCheck(bool)._doHealthCheck (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#370) is not in mixedCase
+Parameter BaseStrategy.setStrategist(address)._strategist (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#381) is not in mixedCase
+Parameter BaseStrategy.setKeeper(address)._keeper (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#400) is not in mixedCase
+Parameter BaseStrategy.setRewards(address)._rewards (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#414) is not in mixedCase
+Parameter BaseStrategy.setMinReportDelay(uint256)._delay (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#434) is not in mixedCase
+Parameter BaseStrategy.setMaxReportDelay(uint256)._delay (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#451) is not in mixedCase
+Parameter BaseStrategy.setProfitFactor(uint256)._profitFactor (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#466) is not in mixedCase
+Parameter BaseStrategy.setDebtThreshold(uint256)._debtThreshold (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#484) is not in mixedCase
+Parameter BaseStrategy.setMetadataURI(string)._metadataURI (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#497) is not in mixedCase
+Parameter BaseStrategy.withdraw(uint256)._amountNeeded (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#798) is not in mixedCase
+Parameter BaseStrategy.migrate(address)._newStrategy (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#827) is not in mixedCase
+Parameter BaseStrategy.sweep(address)._token (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#888) is not in mixedCase
+Parameter BaseStrategyInitializable.initialize(address,address,address,address)._vault (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#906) is not in mixedCase
+Parameter BaseStrategyInitializable.initialize(address,address,address,address)._strategist (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#907) is not in mixedCase
+Parameter BaseStrategyInitializable.initialize(address,address,address,address)._rewards (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#908) is not in mixedCase
+Parameter BaseStrategyInitializable.initialize(address,address,address,address)._keeper (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#909) is not in mixedCase
+Parameter BaseStrategyInitializable.clone(address)._vault (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#914) is not in mixedCase
+Parameter BaseStrategyInitializable.clone(address,address,address,address)._vault (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#920) is not in mixedCase
+Parameter BaseStrategyInitializable.clone(address,address,address,address)._strategist (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#921) is not in mixedCase
+Parameter BaseStrategyInitializable.clone(address,address,address,address)._rewards (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#922) is not in mixedCase
+Parameter BaseStrategyInitializable.clone(address,address,address,address)._keeper (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#923) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+
+Variable IMirrorWorld.xBOOForBOO(uint256)._xBOOAmount (contracts/interfaces/IMirrorWorld.sol#10) is too similar to IMirrorWorld.BOOForxBOO(uint256).xBOOAmount_ (contracts/interfaces/IMirrorWorld.sol#11)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#variable-names-are-too-similar
+
+BaseStrategyInitializable.clone(address,address,address,address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#919-940) uses literals with too many digits:
+        - mstore(uint256,uint256)(clone_code_clone_asm_0,0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#931)
+BaseStrategyInitializable.clone(address,address,address,address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#919-940) uses literals with too many digits:
+        - mstore(uint256,uint256)(clone_code_clone_asm_0 + 0x28,0x5af43d82803e903d91602b57fd5bf30000000000000000000000000000000000) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#933)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#too-many-digits
+
+BaseStrategyInitializable (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#899-941) does not implement functions:
+        - BaseStrategy.adjustPosition(uint256) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#606)
+        - BaseStrategy.estimatedTotalAssets() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#550)
+        - BaseStrategy.ethToWant(uint256) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#524)
+        - BaseStrategy.liquidateAllPositions() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#626)
+        - BaseStrategy.liquidatePosition(uint256) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#618)
+        - BaseStrategy.name() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#217)
+        - BaseStrategy.prepareMigration(address) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#813)
+        - BaseStrategy.prepareReturn(uint256) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#588-595)
+        - BaseStrategy.protectedTokens() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#869)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unimplemented-functions
+
+BaseStrategyInitializable.isOriginal (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#900) should be constant
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-constant
+
+balanceOfWantInMirrorWorld() should be declared external:
+        - Strategy.balanceOfWantInMirrorWorld() (contracts/Strategy.sol#71-74)
+apiVersion() should be declared external:
+        - BaseStrategy.apiVersion() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#205-207)
+isActive() should be declared external:
+        - BaseStrategy.isActive() (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#560-562)
+tendTrigger(uint256) should be declared external:
+        - BaseStrategy.tendTrigger(uint256) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#646-654)
+harvestTrigger(uint256) should be declared external:
+        - BaseStrategy.harvestTrigger(uint256) (../.brownie/packages/yearn/yearn-vaults@0.4.3/contracts/BaseStrategy.sol#700-733)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#public-function-that-could-be-declared-external
+. analyzed (15 contracts with 78 detectors), 97 result(s) found
